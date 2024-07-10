@@ -1,0 +1,52 @@
+name: Generate Front Door Link and Post PR Comment
+
+on:
+  workflow_call:
+    inputs:
+      target-org:
+        description: 'Target org alias'
+        required: true
+        type: string
+    secrets:
+      ACCESS_TOKEN:
+        required: true
+      INSTANCE_URL:
+        required: true
+
+jobs:
+  generate-front-door-link:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Install dependencies"
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: "Generate front-door link"
+        run: |
+          echo "Fetching access token and instance URL"
+          ACCESS_TOKEN=$(sf org display --json --target-org ${{ inputs.target-org }} | jq -r .result.accessToken)
+          INSTANCE_URL=$(sf org display --json --target-org ${{ inputs.target-org }} | jq -r .result.instanceUrl)
+
+          if [ -z "$ACCESS_TOKEN" ] || [ -z "$INSTANCE_URL" ]; then
+            echo "Error: Failed to retrieve access token or instance URL"
+            exit 1
+          fi
+
+          FRONT_DOOR_URL="${INSTANCE_URL}/secur/frontdoor.jsp?sid=${ACCESS_TOKEN}"
+          echo "FRONT_DOOR_URL=${FRONT_DOOR_URL}" >> $GITHUB_ENV
+
+      - name: "Post PR comment"
+        uses: actions/github-script@v6
+        env:
+          FRONT_DOOR_URL: ${{ env.FRONT_DOOR_URL }}
+        with:
+          script: |
+            if (!process.env.FRONT_DOOR_URL) {
+              throw new Error("FRONT_DOOR_URL is not set");
+            }
+            const frontDoorUrl = process.env.FRONT_DOOR_URL;
+            github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `The scratch org is active for 2 days. You can review the changes [here](${frontDoorUrl}).`
+            })

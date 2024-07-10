@@ -25,6 +25,9 @@ jobs:
           echo "$nodeInstallPath/bin" >> $GITHUB_PATH
           sf --version
 
+      - name: "Populate auth file with DEVHUB_SFDX_URL secret"
+        run: echo ${{ secrets.DEVHUB_SFDX_URL }} > ./DEVHUB_SFDX_URL.txt
+
       - name: "Authenticate Dev Hub"
         run: sf org login sfdx-url --sfdx-url-file ./DEVHUB_SFDX_URL.txt --alias devhub
 

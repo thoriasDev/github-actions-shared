@@ -1,5 +1,12 @@
 name: Generate Front Door Link and Post PR Comment
 on: workflow_call
+inputs:
+  target-org:
+    description: "Alias for the target scratch org"
+    required: true
+  github-token:
+    description: "GitHub token for authentication"
+    required: true
 
 jobs:
   generate-link:
@@ -27,4 +34,4 @@ jobs:
           PAYLOAD=$(echo "${COMMENT}" | jq -R --slurp '{body: .}')
           COMMENTS_URL=$(jq -r .pull_request.comments_url < "$GITHUB_EVENT_PATH")
 
-          echo "${PAYLOAD}" | curl -s -S -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" --header "Content-Type: application/json" --data @- "${COMMENTS_URL}" > /dev/null
+          echo "${PAYLOAD}" | curl -s -S -H "Authorization: token ${{ inputs.github-token }}" --header "Content-Type: application/json" --data @- "${COMMENTS_URL}" > /dev/null

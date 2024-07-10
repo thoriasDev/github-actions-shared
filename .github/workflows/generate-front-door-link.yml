@@ -6,13 +6,6 @@ on:
           description: "Alias for the target scratch org"
           type: string
           required: true
-      secrets:
-        github-token:
-          description: "GitHub token for authentication"
-          required: true
-        devhub-sfdx-url:
-          description: "URL for the Dev Hub"
-          required: true
 
 jobs:
   generate-link:
@@ -26,7 +19,9 @@ jobs:
           sf --version
 
       - name: Populate auth file with DEVHUB_SFDX_URL secret
-        run: echo ${{ secrets.DEVHUB_SFDX_URL }} > ./DEVHUB_SFDX_URL.txt
+        run: |
+          echo ${{ secrets.DEVHUB_SFDX_URL }}
+          echo ${{ secrets.DEVHUB_SFDX_URL }} > ./DEVHUB_SFDX_URL.txt
 
       - name: Authenticate Dev Hub
         run: sf org login sfdx-url --sfdx-url-file ./DEVHUB_SFDX_URL.txt --alias devhub

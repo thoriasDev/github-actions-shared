@@ -1,0 +1,76 @@
+name: Pull Request - Salesforce CI/CD
+on: workflow_call
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout source code"
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: "Install Salesforce CLI"
+        run: |
+          npm install @salesforce/cli --location=global
+          nodeInstallPath=$(npm config get prefix)
+          echo "$nodeInstallPath/bin" >> $GITHUB_PATH
+          sf --version
+
+      - name: "Install Salesforce CLI plugins"
+        run: |
+          mkdir -p $HOME/.config/sf
+          echo '["@dx-cli-toolbox/sfdx-toolbox-package-utils"]' > $HOME/.config/sf/unsignedPluginAllowList.json
+          sf plugins install @dx-cli-toolbox/sfdx-toolbox-package-utils
+
+      - name: "Populate auth file with DEVHUB_SFDX_URL secret"
+        run: echo ${{ secrets.DEVHUB_SFDX_URL }} > ./DEVHUB_SFDX_URL.txt
+
+      - name: "Authenticate Dev Hub"
+        run: sf org login sfdx-url --sfdx-url-file ./DEVHUB_SFDX_URL.txt --alias devhub
+
+      - name: "Create scratch org"
+        run: sf org create scratch -f config/project-scratch-def.json --alias qa_scratchorg --target-dev-hub devhub --duration-days 2
+
+#      - name: "Install dependencies"
+#        run: sfdx toolbox:package:dependencies:install -u qa_scratchorg
+#
+#      - name: "Push source code to scratch org"
+#        run: |
+#          sf project deploy start --wait 20 --target-org qa_scratchorg
+#
+#      - name: "Run Apex tests"
+#        run: sf apex test run --test-level RunLocalTests --code-coverage --result-format human --wait 30 --target-org qa_scratchorg
+
+      - name: "Install jq"
+        if: success()
+        run: sudo apt-get install jq
+
+      - name: "Generate front-door link"
+        if: success()
+        run: |
+          ACCESS_TOKEN=$(sf org display --json --target-org qa_scratchorg | jq -r .result.accessToken)
+          INSTANCE_URL=$(sf org display --json --target-org qa_scratchorg | jq -r .result.instanceUrl)
+          FRONT_DOOR_URL="${INSTANCE_URL}/secur/frontdoor.jsp?sid=${ACCESS_TOKEN}"
+          echo "FRONT_DOOR_URL=${FRONT_DOOR_URL}" >> $GITHUB_ENV
+
+      - name: "Post PR comment"
+        if: success()
+        uses: actions/github-script@v6
+        env:
+          FRONT_DOOR_URL: ${{ env.FRONT_DOOR_URL }}
+        with:
+          script: |
+            const frontDoorUrl = process.env.FRONT_DOOR_URL;
+            github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `The scratch org is active for 2 days. You can review the changes [here](${frontDoorUrl}).`
+            })
+
+      - name: "Delete scratch org"
+        if: failure()
+        run: sf org delete scratch --no-prompt --target-org qa_scratchorg

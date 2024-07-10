@@ -2,7 +2,7 @@ name: Generate Front Door Link and Post PR Comment
 on:
   workflow_call:
       inputs:
-        target-org:
+        org-info:
           description: "Alias for the target scratch org"
           type: string
           required: true
@@ -11,29 +11,11 @@ jobs:
   generate-link:
     runs-on: ubuntu-latest
     steps:
-      - name: Install Salesforce CLI
-        run: |
-          npm install @salesforce/cli --location=global
-          nodeInstallPath=$(npm config get prefix)
-          echo "$nodeInstallPath/bin" >> $GITHUB_PATH
-          sf --version
-
-      - name: Populate auth file with DEVHUB_SFDX_URL secret
-        run: |
-          echo ${{ secrets.DEVHUB_SFDX_URL }}
-          echo ${{ secrets.DEVHUB_SFDX_URL }} > ./DEVHUB_SFDX_URL.txt
-
-      - name: Authenticate Dev Hub
-        run: sf org login sfdx-url --sfdx-url-file ./DEVHUB_SFDX_URL.txt --alias devhub
-
       - name: Generate Front Door Link
         id: generate_link
         run: |
-          sf org list
-          sf org display --target-org ${{ inputs.target-org }}
-               
-          ORG_URL=$(sf org display --target-org ${{ inputs.target-org }} --json | jq -r '.result.instanceUrl')
-          SESSION_ID=$(sf org display --target-org ${{ inputs.target-org }} --json | jq -r '.result.accessToken')
+          ORG_URL=$(${{org-info}} | jq -r '.result.instanceUrl')
+          SESSION_ID=$(${{org-info}} | jq -r '.result.accessToken')
           FRONT_DOOR_LINK="${ORG_URL}/secur/frontdoor.jsp?sid=${SESSION_ID}"
           echo "::set-output name=front_door_link::${FRONT_DOOR_LINK}"
           echo "FRONT_DOOR_URL=${FRONT_DOOR_LINK}" >> $GITHUB_ENV

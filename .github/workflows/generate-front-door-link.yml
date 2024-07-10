@@ -33,6 +33,9 @@ jobs:
           ACCESS_TOKEN=$(sf org display --json --target-org ${{ inputs.target-org }} | jq -r .result.accessToken)
           INSTANCE_URL=$(sf org display --json --target-org ${{ inputs.target-org }} | jq -r .result.instanceUrl)
 
+          echo "ACCESS_TOKEN=${ACCESS_TOKEN}"
+          echo "INSTANCE_URL=${INSTANCE_URL}"
+
           if [ -z "$ACCESS_TOKEN" ] || [ -z "$INSTANCE_URL" ]; then
             echo "Error: Failed to retrieve access token or instance URL"
             exit 1
@@ -47,6 +50,7 @@ jobs:
           FRONT_DOOR_URL: ${{ env.FRONT_DOOR_URL }}
         with:
           script: |
+            console.log("FRONT_DOOR_URL: ", process.env.FRONT_DOOR_URL);
             if (!process.env.FRONT_DOOR_URL) {
               throw new Error("FRONT_DOOR_URL is not set");
             }

@@ -1,4 +1,4 @@
-name: Pull Request - Salesforce CI/CD
+name: Pull Request - Salesforce
 on: workflow_call
 
 jobs:
@@ -34,15 +34,15 @@ jobs:
       - name: "Create scratch org"
         run: sf org create scratch -f config/project-scratch-def.json --alias qa_scratchorg --target-dev-hub devhub --duration-days 2
 
-#      - name: "Install dependencies"
-#        run: sfdx toolbox:package:dependencies:install -u qa_scratchorg
-#
-#      - name: "Push source code to scratch org"
-#        run: |
-#          sf project deploy start --wait 20 --target-org qa_scratchorg
-#
-#      - name: "Run Apex tests"
-#        run: sf apex test run --test-level RunLocalTests --code-coverage --result-format human --wait 30 --target-org qa_scratchorg
+      - name: "Install dependencies"
+        run: sfdx toolbox:package:dependencies:install -u qa_scratchorg
+
+      - name: "Push source code to scratch org"
+        run: |
+          sf project deploy start --wait 20 --target-org qa_scratchorg
+
+      - name: "Run Apex tests"
+        run: sf apex test run --test-level RunLocalTests --code-coverage --result-format human --wait 30 --target-org qa_scratchorg
 
       - name: "Install jq"
         if: success()

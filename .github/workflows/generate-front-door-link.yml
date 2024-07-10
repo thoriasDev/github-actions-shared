@@ -14,8 +14,8 @@ jobs:
       - name: Generate Front Door Link
         id: generate_link
         run: |
-          ORG_URL=$(${{input.org-info}} | jq -r '.result.instanceUrl')
-          SESSION_ID=$(${{input.org-info}} | jq -r '.result.accessToken')
+          ORG_URL=$(${{inputs.org-info}} | jq -r '.result.instanceUrl')
+          SESSION_ID=$(${{inputs.org-info}} | jq -r '.result.accessToken')
           FRONT_DOOR_LINK="${ORG_URL}/secur/frontdoor.jsp?sid=${SESSION_ID}"
           echo "::set-output name=front_door_link::${FRONT_DOOR_LINK}"
           echo "FRONT_DOOR_URL=${FRONT_DOOR_LINK}" >> $GITHUB_ENV

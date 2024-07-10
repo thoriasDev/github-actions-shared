@@ -14,6 +14,7 @@ jobs:
       - name: Generate Front Door Link
         id: generate_link
         run: |
+          echo "ORG_INFO: ${{inputs.org-info}}"
           ORG_URL=$(${{inputs.org-info}} | jq -r '.result.instanceUrl')
           SESSION_ID=$(${{inputs.org-info}} | jq -r '.result.accessToken')
           FRONT_DOOR_LINK="${ORG_URL}/secur/frontdoor.jsp?sid=${SESSION_ID}"

@@ -1,68 +1,30 @@
 name: Generate Front Door Link and Post PR Comment
-
-on:
-  workflow_call:
-    inputs:
-      target-org:
-        description: 'Target org alias'
-        required: true
-        type: string
-    secrets:
-      DEVHUB_SFDX_URL:
-        required: true
+on: workflow_call
 
 jobs:
-  generate-front-door-link:
+  generate-link:
     runs-on: ubuntu-latest
     steps:
-      - name: "Install dependencies"
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: "Install Salesforce CLI"
+      - name: Install Salesforce CLI
         run: |
           npm install @salesforce/cli --location=global
           nodeInstallPath=$(npm config get prefix)
           echo "$nodeInstallPath/bin" >> $GITHUB_PATH
           sf --version
 
-      - name: "Populate auth file with DEVHUB_SFDX_URL secret"
-        run: echo ${{ secrets.DEVHUB_SFDX_URL }} > ./DEVHUB_SFDX_URL.txt
-
-      - name: "Authenticate Dev Hub"
-        run: sf org login sfdx-url --sfdx-url-file ./DEVHUB_SFDX_URL.txt --alias devhub
-
-      - name: "Generate front-door link"
+      - name: Generate Front Door Link
+        id: generate_link
         run: |
-          echo "Fetching access token and instance URL"
-          echo "Target org: ${{ inputs.target-org }}"
-          ACCESS_TOKEN=$(sf org display --json --target-org ${{ inputs.target-org }} | jq -r .result.accessToken)
-          INSTANCE_URL=$(sf org display --json --target-org ${{ inputs.target-org }} | jq -r .result.instanceUrl)
+          ORG_URL=$(sf org display --target-org ${{ inputs.target-org }} --json | jq -r '.result.instanceUrl')
+          SESSION_ID=$(sf org display --target-org ${{ inputs.target-org }} --json | jq -r '.result.accessToken')
+          FRONT_DOOR_LINK="${ORG_URL}/secur/frontdoor.jsp?sid=${SESSION_ID}"
+          echo "::set-output name=front_door_link::${FRONT_DOOR_LINK}"
 
-          echo "ACCESS_TOKEN=${ACCESS_TOKEN}"
-          echo "INSTANCE_URL=${INSTANCE_URL}"
+      - name: Post PR Comment
+        run: |
+          PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+          COMMENT="#### Salesforce Scratch Org Front Door Link\n${{ steps.generate_link.outputs.front_door_link }}"
+          PAYLOAD=$(echo "${COMMENT}" | jq -R --slurp '{body: .}')
+          COMMENTS_URL=$(jq -r .pull_request.comments_url < "$GITHUB_EVENT_PATH")
 
-          if [ -z "$ACCESS_TOKEN" ] || [ -z "$INSTANCE_URL" ]; then
-            echo "Error: Failed to retrieve access token or instance URL"
-            exit 1
-          fi
-
-          FRONT_DOOR_URL="${INSTANCE_URL}/secur/frontdoor.jsp?sid=${ACCESS_TOKEN}"
-          echo "FRONT_DOOR_URL=${FRONT_DOOR_URL}" >> $GITHUB_ENV
-
-      - name: "Post PR comment"
-        uses: actions/github-script@v6
-        env:
-          FRONT_DOOR_URL: ${{ env.FRONT_DOOR_URL }}
-        with:
-          script: |
-            console.log("FRONT_DOOR_URL: ", process.env.FRONT_DOOR_URL);
-            if (!process.env.FRONT_DOOR_URL) {
-              throw new Error("FRONT_DOOR_URL is not set");
-            }
-            const frontDoorUrl = process.env.FRONT_DOOR_URL;
-            github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: `The scratch org is active for 2 days. You can review the changes [here](${frontDoorUrl}).`
-            })
+          echo "${PAYLOAD}" | curl -s -S -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" --header "Content-Type: application/json" --data @- "${COMMENTS_URL}" > /dev/null

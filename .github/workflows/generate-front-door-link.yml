@@ -1,13 +1,15 @@
 name: Generate Front Door Link and Post PR Comment
-on: workflow_call
-inputs:
-  target-org:
-    description: "Alias for the target scratch org"
-    required: true
-secrets:
-  github-token:
-    description: "GitHub token for authentication"
-    required: true
+on:
+  workflow_call:
+      inputs:
+        target-org:
+          description: "Alias for the target scratch org"
+          type: string
+          required: true
+      secrets:
+        github-token:
+          description: "GitHub token for authentication"
+          required: true
 
 jobs:
   generate-link:

@@ -42,8 +42,6 @@ jobs:
           sf project deploy start --wait 20 --target-org qa_scratchorg
 
       - name: "Run Apex tests"
-        env:
-            GH_TOKEN: ${{ github.token }}
         run: |
             sf apex test run -c -r json -w 30 --target-org qa_scratchorg > testout.json
 

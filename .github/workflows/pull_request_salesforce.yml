@@ -42,7 +42,25 @@ jobs:
           sf project deploy start --wait 20 --target-org qa_scratchorg
 
       - name: "Run Apex tests"
-        run: sf apex test run --test-level RunLocalTests --code-coverage --result-format human --wait 30 --target-org qa_scratchorg
+        env:
+            GH_TOKEN: ${{ github.token }}
+        run: |
+            sf apex test run -c -r json -w 30 --target-org qa_scratchorg > testout.json
+
+            jq -e '.result.summary.outcome == "Passed" and (.result.summary.testRunCoverage | rtrimstr("%") | tonumber >= 75)' testout.json
+            if [ $? -ne 0 ]; then
+                echo "Tests failed or coverage is less than 75%"
+                exit 1
+            fi
+
+      - uses: rossreicks/test-reporter@feat/addParserForApexJson
+        if: success() || failure()
+        with:
+            name: Apex Tests
+            path: "testout.json"
+            reporter: apex-json
+            create-pr-comment: "true"
+            use-actions-summary: "false"
 
       - name: "Install jq"
         if: success()

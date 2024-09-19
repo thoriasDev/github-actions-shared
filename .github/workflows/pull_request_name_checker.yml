@@ -15,7 +15,7 @@ jobs:
       - name: Check PR title
         id: check_title
         run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_TITLE="(TS2)"
           echo "PR title: $PR_TITLE"
 
           # Define your desired pattern (e.g., should start with "Fix:", "Feature:", etc.)

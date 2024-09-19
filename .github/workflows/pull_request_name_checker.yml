@@ -1,0 +1,31 @@
+name: Pull Request Name Checker
+
+on:
+  pull_request:
+    types: [opened, edited]
+
+jobs:
+  check-title:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Check PR title
+        id: check_title
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          echo "PR title: $PR_TITLE"
+
+          # Define your desired pattern (e.g., should start with "Fix:", "Feature:", etc.)
+          PATTERN="^(Fix|Feature|Docs|Refactor|Chore): .+"
+
+          if [[ ! $PR_TITLE =~ $PATTERN ]]; then
+            echo "Error: Pull request title does not match the required pattern."
+            echo "Expected format: 'Type: Description' (e.g., 'Fix: corrected typo')"
+            exit 1
+          fi
+
+      - name: Success message
+        run: echo "Pull request title is valid!"

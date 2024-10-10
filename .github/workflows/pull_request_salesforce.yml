@@ -25,9 +25,13 @@ jobs:
           echo '["@dx-cli-toolbox/sfdx-toolbox-package-utils"]' > $HOME/.config/sf/unsignedPluginAllowList.json
           sf plugins install @dx-cli-toolbox/sfdx-toolbox-package-utils
 
+      - name: "Debug DEVHUB_SFDX_URL"
+        run: |
+          echo "DEVHUB_SFDX_URL=${{ secrets.DEVHUB_SFDX_URL }}" | tr -d '\n' | sed 's/./*/g' # Mask the output for security
+      
       - name: "Populate auth file with DEVHUB_SFDX_URL secret"
-        run: echo ${{ secrets.DEVHUB_SFDX_URL }} > ./DEVHUB_SFDX_URL.txt
-
+        run: echo "${{ secrets.DEVHUB_SFDX_URL }}" > ./DEVHUB_SFDX_URL.txt
+      
       - name: "Authenticate Dev Hub"
         run: sf org login sfdx-url --sfdx-url-file ./DEVHUB_SFDX_URL.txt --alias devhub
 

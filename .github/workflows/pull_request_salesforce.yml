@@ -55,7 +55,7 @@ jobs:
                 exit 1
             fi
 
-      - uses: thorias_dev/test-reporter@feat/addParserForApexJson
+      - uses: rossreicks/test-reporter@feat/addParserForApexJson
         if: success() || failure()
         with:
             name: Apex Tests

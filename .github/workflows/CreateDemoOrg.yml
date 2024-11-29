@@ -25,15 +25,15 @@ jobs:
           echo '["@dx-cli-toolbox/sfdx-toolbox-package-utils"]' > $HOME/.config/sf/unsignedPluginAllowList.json
           sf plugins install @dx-cli-toolbox/sfdx-toolbox-package-utils
 
-      - name: "Debug DEVHUB_SFDX_URL_WORK_BRIDGE_SOLUTION"
+      - name: "Debug DEVHUB_SFDX_URL"
         run: |
-          echo "DEVHUB_SFDX_URL_WORK_BRIDGE_SOLUTION=${{ secrets.DEVHUB_SFDX_URL_WORK_BRIDGE_SOLUTION }}" | tr -d '\n' | sed 's/./*/g' # Mask the output for security
+          echo "DEVHUB_SFDX_URL=${{ secrets.DEVHUB_SFDX_URL }}" | tr -d '\n' | sed 's/./*/g' # Mask the output for security
       
-      - name: "Populate auth file with DEVHUB_SFDX_URL_WORK_BRIDGE_SOLUTION secret"
-        run: echo "${{ secrets.DEVHUB_SFDX_URL_WORK_BRIDGE_SOLUTION }}" > ./DEVHUB_SFDX_URL_WORK_BRIDGE_SOLUTION.txt
+      - name: "Populate auth file with DEVHUB_SFDX_URL secret"
+        run: echo "${{ secrets.DEVHUB_SFDX_URL }}" > ./DEVHUB_SFDX_URL.txt
       
       - name: "Authenticate Dev Hub"
-        run: sf org login sfdx-url --sfdx-url-file ./DEVHUB_SFDX_URL_WORK_BRIDGE_SOLUTION.txt --alias devhub
+        run: sf org login sfdx-url --sfdx-url-file ./DEVHUB_SFDX_URL.txt --alias devhub
 
       - name: "Create scratch org"
         run: sf org create scratch -f config/project-scratch-def.json --alias qa_scratchorg --target-dev-hub devhub --duration-days 7

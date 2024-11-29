@@ -25,9 +25,9 @@ jobs:
           echo '["@dx-cli-toolbox/sfdx-toolbox-package-utils"]' > $HOME/.config/sf/unsignedPluginAllowList.json
           sf plugins install @dx-cli-toolbox/sfdx-toolbox-package-utils
 
-      - name: "Debug DEVHUB_SFDX_URL"
+      - name: "Debug DEVHUB_SFDX_URL_WORK_BRIDGE_SOLUTION"
         run: |
-          echo "DEVHUB_SFDX_URL=${{ secrets.DEVHUB_SFDX_URL_WORK_BRIDGE_SOLUTION }}" | tr -d '\n' | sed 's/./*/g' # Mask the output for security
+          echo "DEVHUB_SFDX_URL_WORK_BRIDGE_SOLUTION=${{ secrets.DEVHUB_SFDX_URL_WORK_BRIDGE_SOLUTION }}" | tr -d '\n' | sed 's/./*/g' # Mask the output for security
       
       - name: "Populate auth file with DEVHUB_SFDX_URL_WORK_BRIDGE_SOLUTION secret"
         run: echo "${{ secrets.DEVHUB_SFDX_URL_WORK_BRIDGE_SOLUTION }}" > ./DEVHUB_SFDX_URL_WORK_BRIDGE_SOLUTION.txt

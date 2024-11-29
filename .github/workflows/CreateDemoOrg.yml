@@ -1,5 +1,5 @@
 name: Create Demo Org - Salesforce
-on: workflow_dispatch
+on: workflow_call
 
 jobs:
   run-tests:

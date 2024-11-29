@@ -1,0 +1,96 @@
+name: Create Demo Org - Salesforce
+on: workflow_dispatch
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout source code"
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: "Install Salesforce CLI"
+        run: |
+          npm install @salesforce/cli --location=global
+          nodeInstallPath=$(npm config get prefix)
+          echo "$nodeInstallPath/bin" >> $GITHUB_PATH
+          sf --version
+
+      - name: "Install Salesforce CLI plugins"
+        run: |
+          mkdir -p $HOME/.config/sf
+          echo '["@dx-cli-toolbox/sfdx-toolbox-package-utils"]' > $HOME/.config/sf/unsignedPluginAllowList.json
+          sf plugins install @dx-cli-toolbox/sfdx-toolbox-package-utils
+
+      - name: "Debug DEVHUB_SFDX_URL"
+        run: |
+          echo "DEVHUB_SFDX_URL=${{ secrets.DEVHUB_SFDX_URL }}" | tr -d '\n' | sed 's/./*/g' # Mask the output for security
+      
+      - name: "Populate auth file with DEVHUB_SFDX_URL secret"
+        run: echo "${{ secrets.DEVHUB_SFDX_URL }}" > ./DEVHUB_SFDX_URL.txt
+      
+      - name: "Authenticate Dev Hub"
+        run: sf org login sfdx-url --sfdx-url-file ./DEVHUB_SFDX_URL.txt --alias devhub
+
+      - name: "Create scratch org"
+        run: sf org create scratch -f config/project-scratch-def.json --alias qa_scratchorg --target-dev-hub devhub --duration-days 7
+
+      - name: "Install dependencies"
+        run: sfdx toolbox:package:dependencies:install -u qa_scratchorg
+
+      - name: "Push source code to scratch org"
+        run: |
+          sf project deploy start --wait 20 --target-org qa_scratchorg
+
+      - name: "Run Apex tests"
+        run: |
+            sf apex test run -c -r json -w 30 --target-org qa_scratchorg > testout.json
+
+            jq -e '.result.summary.outcome == "Passed" and (.result.summary.testRunCoverage | rtrimstr("%") | tonumber >= 75)' testout.json
+            if [ $? -ne 0 ]; then
+                echo "Tests failed or coverage is less than 75%"
+                exit 1
+            fi
+
+      - uses: thoriasDev/test-reporter@feat/addParserForApexJson
+        if: success() || failure()
+        with:
+            name: Apex Tests
+            path: "testout.json"
+            reporter: apex-json
+            create-pr-comment: "true"
+            use-actions-summary: "false"
+
+      - name: "Install jq"
+        if: success()
+        run: sudo apt-get install jq
+
+      - name: "Generate front-door link"
+        if: success()
+        run: |
+          ACCESS_TOKEN=$(sf org display --json --target-org qa_scratchorg | jq -r .result.accessToken)
+          INSTANCE_URL=$(sf org display --json --target-org qa_scratchorg | jq -r .result.instanceUrl)
+          FRONT_DOOR_URL="${INSTANCE_URL}/secur/frontdoor.jsp?sid=${ACCESS_TOKEN}"
+          echo "FRONT_DOOR_URL=${FRONT_DOOR_URL}" >> $GITHUB_ENV
+
+      - name: "Post PR comment"
+        if: success()
+        uses: actions/github-script@v6
+        env:
+          FRONT_DOOR_URL: ${{ env.FRONT_DOOR_URL }}
+        with:
+          script: |
+            const frontDoorUrl = process.env.FRONT_DOOR_URL;
+            github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `The scratch org is active for 7 days. You can review the changes [here](${frontDoorUrl}).`
+            })
+
+      - name: "Delete scratch org"
+        if: failure()
+        run: sf org delete scratch --no-prompt --target-org qa_scratchorg
